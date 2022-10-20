@@ -18,6 +18,8 @@ tokio = { version = "1" }
 tonic-native-tls = { path = "../", features = ["tonic"] }
 tonic-reflection = "0.5.0"
 tonic = { version = "0.8.0", default-features = false, features = ["codegen", "prost"] }
+hyper-tls = "0.5.0"
+hyper = "0.14.20"
 
 [build-dependencies]
 tonic-build = { version = "0.8.0", default-features = false, features = ["prost"] }
