@@ -11,7 +11,6 @@ use std::{
 };
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio_native_tls::{TlsAcceptor, TlsStream};
-use tonic::transport::server::Connected;
 
 pub type Error = Box<dyn StdError + Send + Sync + 'static>;
 
@@ -34,11 +33,29 @@ where
 #[derive(Debug)]
 pub struct TlsStreamWrapper<S>(TlsStream<S>);
 
-impl<S> Connected for TlsStreamWrapper<S>
-where
-    S: Connected + AsyncRead + AsyncWrite + Unpin,
+#[cfg(feature = "axum")]
+impl axum::extract::connect_info::Connected<&TlsStreamWrapper<tokio::net::TcpStream>>
+    for std::net::SocketAddr
 {
-    type ConnectInfo = <S as Connected>::ConnectInfo;
+    fn connect_info(target: &TlsStreamWrapper<tokio::net::TcpStream>) -> Self {
+        use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+        target
+            .0
+            .get_ref()
+            .get_ref()
+            .get_ref()
+            .peer_addr()
+            .unwrap_or(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0))
+    }
+}
+
+#[cfg(feature = "tonic")]
+impl<S> tonic::transport::server::Connected for TlsStreamWrapper<S>
+where
+    S: tonic::transport::server::Connected + AsyncRead + AsyncWrite + Unpin,
+{
+    type ConnectInfo = <S as tonic::transport::server::Connected>::ConnectInfo;
 
     fn connect_info(&self) -> Self::ConnectInfo {
         self.0.get_ref().get_ref().get_ref().connect_info()

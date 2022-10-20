@@ -19,7 +19,9 @@ vendored = ["native-tls/vendored"]
 
 [dependencies]
 futures-util = "0.3.24"
-native-tls = { version = "0.2.10", optional = true }
 tokio-native-tls = "0.3.0"
 tokio = { version = "1", features = ["rt-multi-thread"] }
-tonic = { version = "0.8.2", default-features = false, features = ["transport"] }
+
+axum = { version = "0.5.16", optional = true, default-features = false }
+native-tls = { version = "0.2.10", optional = true }
+tonic = { version = "0.8.2", optional = true, default-features = false, features = ["transport"] }
