@@ -6,6 +6,7 @@ use futures_util::{Stream, StreamExt, TryStream, TryStreamExt};
 use std::{
     error::Error as StdError,
     fmt::Debug,
+    future::ready,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -23,11 +24,25 @@ where
     S::Ok: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static,
     S::Error: StdError + Send + Sync + 'static,
 {
-    incoming.into_stream().then(move |stream| {
-        // TODO: Wrap into Arc?
-        let acceptor = acceptor.clone();
-        async move { Ok(TlsStreamWrapper(acceptor.accept(stream?).await?)) }
-    })
+    incoming
+        .into_stream()
+        .then(move |stream| {
+            // TODO: Wrap into Arc?
+            let acceptor = acceptor.clone();
+            async move { Ok(TlsStreamWrapper(acceptor.accept(stream?).await?)) }
+        })
+        .filter(|tls_stream| {
+            #[allow(unused_variables, clippy::match_like_matches_macro)]
+            let ret = if let Err(error) = tls_stream {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Got error on incoming: `{error}`.");
+                false
+            } else {
+                true
+            };
+
+            ready(ret)
+        })
 }
 
 #[derive(Debug)]

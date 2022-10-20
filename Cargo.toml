@@ -24,4 +24,5 @@ tokio = { version = "1", features = ["rt-multi-thread"] }
 
 axum = { version = "0.5.16", optional = true, default-features = false }
 native-tls = { version = "0.2.10", optional = true }
+tracing = { version = "0.1.37", optional = true, default-features = false }
 tonic = { version = "0.8.2", optional = true, default-features = false, features = ["transport"] }
