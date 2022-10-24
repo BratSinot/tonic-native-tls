@@ -2,7 +2,7 @@ mod re_export;
 
 pub use re_export::*;
 
-use async_stream::try_stream;
+use async_stream::stream;
 use futures_util::{Stream, StreamExt, TryStream, TryStreamExt};
 use std::{
     error::Error as StdError,
@@ -25,15 +25,18 @@ where
     S::Ok: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static,
     S::Error: StdError + Send + Sync + 'static,
 {
-    try_stream! {
-        while let Some(stream) = incoming.try_next().await? {
-            yield TlsStreamWrapper(acceptor.accept(stream).await?);
+    stream! {
+        while let Some(stream) = incoming.try_next().await.transpose() {
+            yield {
+                let acceptor = &acceptor;
+                move || async move {Ok(TlsStreamWrapper(acceptor.accept(stream?).await?))}
+            }().await;
         }
     }
     .filter(|tls_stream| {
-        let ret = if let Err(error) = tls_stream {
+        let ret = if let Err(_error) = tls_stream {
             #[cfg(feature = "tracing")]
-            tracing::error!("Got error on incoming: `{error}`.");
+            tracing::error!("Got error on incoming: `{_error}`.");
             false
         } else {
             true
