@@ -1,6 +1,6 @@
 [package]
 name = "tonic-native-tls"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/BratSinot/tonic-native-tls"
@@ -18,6 +18,7 @@ members = [
 vendored = ["native-tls/vendored"]
 
 [dependencies]
+async-stream = "0.3.3"
 futures-util = "0.3.24"
 tokio-native-tls = "0.3.0"
 tokio = { version = "1", features = ["rt-multi-thread"] }

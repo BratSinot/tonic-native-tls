@@ -2,6 +2,7 @@ mod re_export;
 
 pub use re_export::*;
 
+use async_stream::try_stream;
 use futures_util::{Stream, StreamExt, TryStream, TryStreamExt};
 use std::{
     error::Error as StdError,
@@ -16,7 +17,7 @@ use tokio_native_tls::{TlsAcceptor, TlsStream};
 pub type Error = Box<dyn StdError + Send + Sync + 'static>;
 
 pub fn incoming<S>(
-    incoming: S,
+    mut incoming: S,
     acceptor: TlsAcceptor,
 ) -> impl Stream<Item = Result<TlsStreamWrapper<S::Ok>, Error>>
 where
@@ -24,25 +25,22 @@ where
     S::Ok: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static,
     S::Error: StdError + Send + Sync + 'static,
 {
-    incoming
-        .into_stream()
-        .then(move |stream| {
-            // TODO: Wrap into Arc?
-            let acceptor = acceptor.clone();
-            async move { Ok(TlsStreamWrapper(acceptor.accept(stream?).await?)) }
-        })
-        .filter(|tls_stream| {
-            #[allow(unused_variables, clippy::match_like_matches_macro)]
-            let ret = if let Err(error) = tls_stream {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Got error on incoming: `{error}`.");
-                false
-            } else {
-                true
-            };
+    try_stream! {
+        while let Some(stream) = incoming.try_next().await? {
+            yield TlsStreamWrapper(acceptor.accept(stream).await?);
+        }
+    }
+    .filter(|tls_stream| {
+        let ret = if let Err(error) = tls_stream {
+            #[cfg(feature = "tracing")]
+            tracing::error!("Got error on incoming: `{error}`.");
+            false
+        } else {
+            true
+        };
 
-            ready(ret)
-        })
+        ready(ret)
+    })
 }
 
 #[derive(Debug)]
